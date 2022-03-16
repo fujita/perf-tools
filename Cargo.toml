@@ -1,0 +1,22 @@
+[package]
+name = "perf-tools"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/fujita/perf-tools"
+description = "library and tools for Linux perf"
+keywords = ["perf", "pprof", "profiling"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = "0.4"
+clap = { version = "3.1.6", features = ["derive"] }
+hex = "0.4"
+libflate = "1"
+lazy_static = "1.4.0"
+prost = "0.9"
+regex = "1"
+
+[build-dependencies]
+prost-build = "0.9"
