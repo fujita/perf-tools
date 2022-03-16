@@ -49,8 +49,8 @@ fn main() {
     pprof::PprofConverterBuilder::default()
         .build()
         .from_reader(
-            &mut std::io::BufReader::with_capacity(4096, &*output.stdout),
-            &mut std::fs::File::create(args.output).unwrap(),
+            std::io::BufReader::with_capacity(4096, &*output.stdout),
+            std::fs::File::create(args.output).unwrap(),
         )
         .unwrap();
 }
