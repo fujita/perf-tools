@@ -19,7 +19,6 @@ use prost::Message;
 use regex::Regex;
 use std::collections::HashMap;
 use std::io;
-use std::io::Write;
 use std::time::Duration;
 
 pub mod pb {
@@ -239,7 +238,7 @@ impl PprofConverter {
         loc_id.0
     }
 
-    fn finish<R, W>(&mut self, reader: R, writer: W) -> io::Result<()>
+    fn finish<R, W>(&mut self, reader: R, mut writer: W) -> io::Result<()>
     where
         R: io::BufRead,
         W: io::Write,
@@ -310,10 +309,9 @@ impl PprofConverter {
             period_type: Some(pb::ValueType { r#type: 3, unit: 4 }),
             ..pb::Profile::default()
         }
-        .encode(&mut content)?;
-        let mut encoder = libflate::gzip::Encoder::new(writer)?;
-        encoder.write_all(&content)?;
-        encoder.finish().into_result().map(|_| ())
+        .encode(&mut content)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{}", e)))?;
+        writer.write_all(&content)
     }
 
     pub fn from_reader<R, W>(&mut self, reader: R, writer: W) -> io::Result<()>

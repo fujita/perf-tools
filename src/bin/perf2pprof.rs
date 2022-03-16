@@ -46,11 +46,18 @@ fn main() {
         panic!("{}", String::from_utf8(output.stderr).unwrap());
     }
 
+    let mut encoder =
+        libflate::gzip::Encoder::new(std::fs::File::create(args.output).unwrap()).unwrap();
     pprof::PprofConverterBuilder::default()
         .build()
         .from_reader(
             std::io::BufReader::with_capacity(4096, &*output.stdout),
-            std::fs::File::create(args.output).unwrap(),
+            &mut encoder,
         )
         .unwrap();
+
+    encoder
+        .finish()
+        .into_result()
+        .expect("gzip encoding failed");
 }

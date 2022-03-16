@@ -170,7 +170,6 @@ fn main() {
         }
     });
     let writer = std::fs::File::create(output).expect("failed to create output file");
-
     let perf_reader = BufReader::new(&*script_output.stdout);
     if args.flamegraph {
         let mut collapsed = vec![];
@@ -185,9 +184,11 @@ fn main() {
         )
         .unwrap();
     } else {
+        let mut encoder = libflate::gzip::Encoder::new(writer).unwrap();
         pprof::PprofConverterBuilder::default()
             .build()
-            .from_reader(perf_reader, &writer)
+            .from_reader(perf_reader, &mut encoder)
             .unwrap();
+        encoder.finish().into_result().unwrap();
     }
 }
