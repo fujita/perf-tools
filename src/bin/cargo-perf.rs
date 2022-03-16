@@ -46,6 +46,10 @@ struct Args {
     #[clap(short, long)]
     output: Option<String>,
 
+    /// sampling frequency
+    #[clap(long)]
+    frequency: Option<u32>,
+
     /// generate flamegraph instead of pprof
     #[clap(long)]
     flamegraph: bool,
@@ -117,6 +121,7 @@ fn find_binary(args: &Args, artifact: &[cargo_metadata::Artifact]) -> std::io::R
 const PERF_DATA_FILE: &str = "perf.data";
 const DEFAULT_PPROF_OUTPUT: &str = "cpu.pprof";
 const DEFAULT_FLAMEGRAPH_OUTPUT: &str = "flamegraph.svg";
+const DEFAULT_RECORD_FREQ: u32 = 99;
 
 fn main() {
     let Commands::Perf(args) = Cli::parse().command;
@@ -131,7 +136,7 @@ fn main() {
         "dwarf",
         "-g",
         "-F",
-        "99",
+        &format!("{}", args.frequency.unwrap_or(DEFAULT_RECORD_FREQ)),
         "-o",
         PERF_DATA_FILE,
     ]);
