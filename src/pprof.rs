@@ -55,7 +55,7 @@ impl PprofConverterBuilder {
 }
 
 impl PerfReader {
-    fn new<R>(reader: &mut R) -> io::Result<Self>
+    fn new<R>(mut reader: R) -> io::Result<Self>
     where
         R: io::BufRead,
     {
@@ -239,7 +239,7 @@ impl PprofConverter {
         loc_id.0
     }
 
-    fn finish<R, W>(&mut self, reader: &mut R, writer: W) -> io::Result<()>
+    fn finish<R, W>(&mut self, reader: R, writer: W) -> io::Result<()>
     where
         R: io::BufRead,
         W: io::Write,
@@ -316,7 +316,7 @@ impl PprofConverter {
         encoder.finish().into_result().map(|_| ())
     }
 
-    pub fn from_reader<R, W>(&mut self, reader: &mut R, writer: &mut W) -> io::Result<()>
+    pub fn from_reader<R, W>(&mut self, reader: R, writer: W) -> io::Result<()>
     where
         R: io::BufRead,
         W: io::Write,

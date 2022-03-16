@@ -42,6 +42,10 @@ struct Args {
     #[clap(short, long)]
     bin: Option<String>,
 
+    /// output file name
+    #[clap(short, long)]
+    output: Option<String>,
+
     /// generate flamegraph instead of pprof
     #[clap(long)]
     flamegraph: bool,
@@ -110,7 +114,9 @@ fn find_binary(args: &Args, artifact: &[cargo_metadata::Artifact]) -> std::io::R
     }
 }
 
-const PERF_FILE_NAME: &str = "perf.data";
+const PERF_DATA_FILE: &str = "perf.data";
+const DEFAULT_PPROF_OUTPUT: &str = "cpu.pprof";
+const DEFAULT_FLAMEGRAPH_OUTPUT: &str = "flamegraph.svg";
 
 fn main() {
     let Commands::Perf(args) = Cli::parse().command;
@@ -127,7 +133,7 @@ fn main() {
         "-F",
         "99",
         "-o",
-        PERF_FILE_NAME,
+        PERF_DATA_FILE,
     ]);
     cmd.arg(binary_path);
     cmd.spawn()
@@ -142,16 +148,25 @@ fn main() {
         })
         .expect("failed to wait for `perf record`");
 
-    let output = Command::new("perf")
+    let script_output = Command::new("perf")
         .arg("script")
         .arg("--header")
         .output()
         .expect("failed to execute perf");
-    if !output.status.success() {
-        panic!("{}", String::from_utf8(output.stderr).unwrap());
+    if !script_output.status.success() {
+        panic!("{}", String::from_utf8(script_output.stderr).unwrap());
     }
 
-    let mut perf_reader = BufReader::new(&*output.stdout);
+    let output = args.output.unwrap_or_else(|| {
+        if args.flamegraph {
+            DEFAULT_FLAMEGRAPH_OUTPUT.to_string()
+        } else {
+            DEFAULT_PPROF_OUTPUT.to_string()
+        }
+    });
+    let writer = std::fs::File::create(output).expect("failed to create output file");
+
+    let perf_reader = BufReader::new(&*script_output.stdout);
     if args.flamegraph {
         let mut collapsed = vec![];
         inferno::collapse::perf::Folder::default()
@@ -160,17 +175,14 @@ fn main() {
 
         inferno::flamegraph::from_reader(
             &mut inferno::flamegraph::Options::default(),
-            &mut BufReader::new(&*collapsed),
-            std::fs::File::create("flamegraph.svg").unwrap(),
+            BufReader::new(&*collapsed),
+            &writer,
         )
         .unwrap();
     } else {
         pprof::PprofConverterBuilder::default()
             .build()
-            .from_reader(
-                &mut perf_reader,
-                &mut std::fs::File::create("cpu.pprof").unwrap(),
-            )
+            .from_reader(perf_reader, &writer)
             .unwrap();
     }
 }
