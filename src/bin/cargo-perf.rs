@@ -15,7 +15,9 @@
 
 use cargo_metadata::Message;
 use clap::Parser;
+use inferno::collapse::Collapse;
 use std::io;
+use std::io::{BufReader, BufWriter};
 use std::process::{Command, Stdio};
 
 use perf_tools::pprof;
@@ -29,16 +31,20 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Commands {
+    /// run perf and generate pprof
     Perf(Args),
 }
 
-/// run perf and generate pprof data
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// command to run
     #[clap(short, long)]
     bin: Option<String>,
+
+    /// generate flamegraph instead of pprof
+    #[clap(long)]
+    flamegraph: bool,
 }
 
 fn build_binary(args: &Args) -> std::io::Result<Vec<cargo_metadata::Artifact>> {
@@ -140,11 +146,26 @@ fn main() {
         panic!("{}", String::from_utf8(output.stderr).unwrap());
     }
 
-    pprof::PprofConverterBuilder::default()
-        .build()
-        .from_reader(
-            &mut std::io::BufReader::with_capacity(4096, &*output.stdout),
-            &mut std::fs::File::create("cpu.pprof").unwrap(),
+    let mut perf_reader = BufReader::new(&*output.stdout);
+    if args.flamegraph {
+        let mut collapsed = vec![];
+        inferno::collapse::perf::Folder::default()
+            .collapse(perf_reader, BufWriter::new(&mut collapsed))
+            .unwrap();
+
+        inferno::flamegraph::from_reader(
+            &mut inferno::flamegraph::Options::default(),
+            &mut BufReader::new(&*collapsed),
+            std::fs::File::create("flamegraph.svg").unwrap(),
         )
         .unwrap();
+    } else {
+        pprof::PprofConverterBuilder::default()
+            .build()
+            .from_reader(
+                &mut perf_reader,
+                &mut std::fs::File::create("cpu.pprof").unwrap(),
+            )
+            .unwrap();
+    }
 }
