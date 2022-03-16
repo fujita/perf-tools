@@ -130,12 +130,17 @@ fn main() {
         PERF_FILE_NAME,
     ]);
     cmd.arg(binary_path);
-    let output = cmd
-        .output()
-        .unwrap_or_else(|e| panic!("failed to run {:?}", e));
-    if !output.status.success() {
-        panic!("{}", String::from_utf8(output.stderr).unwrap());
-    }
+    cmd.spawn()
+        .unwrap_or_else(|e| panic!("failed to run {:?}", e))
+        .wait_with_output()
+        .map(|output| {
+            if output.status.success() {
+                println!("{}", String::from_utf8(output.stdout).unwrap());
+            } else {
+                panic!("{}", String::from_utf8(output.stderr).unwrap());
+            }
+        })
+        .expect("failed to wait for `perf record`");
 
     let output = Command::new("perf")
         .arg("script")
